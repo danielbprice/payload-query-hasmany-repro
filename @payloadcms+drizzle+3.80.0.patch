@@ -1,0 +1,41 @@
+diff --git a/node_modules/@payloadcms/drizzle/dist/queries/parseParams.js b/node_modules/@payloadcms/drizzle/dist/queries/parseParams.js
+index 68da1a9..21c1706 100644
+--- a/node_modules/@payloadcms/drizzle/dist/queries/parseParams.js
++++ b/node_modules/@payloadcms/drizzle/dist/queries/parseParams.js
+@@ -1,4 +1,4 @@
+-import { and, getTableName, isNotNull, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
++import { and, getTableName, inArray, isNotNull, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
+ import { PgUUID } from 'drizzle-orm/pg-core';
+ import { APIError, QueryError } from 'payload';
+ import { validOperatorSet } from 'payload/shared';
+@@ -222,6 +222,16 @@ export function parseParams({ adapter, aliasTable, context, fields, joins, local
+                                     constraints.push(wrapOperator(...queryColumns.map(({ rawColumn, value })=>adapter.operators[queryOperator](rawColumn, value))));
+                                     break;
+                                 }
++                                if ((field.type === 'relationship' || field.type === 'upload') && Array.isArray(queryValue) && operator === 'not_equals') {
++                                    const validValues = queryValue.filter((v)=>v !== null && !Number.isNaN(v));
++                                    if (validValues.length > 0) {
++                                        constraints.push(sql`(${notInArray(table[columnName], validValues)} OR
++                    ${table[columnName]}
++                    IS
++                    NULL)`);
++                                    }
++                                    break;
++                                }
+                                 if (queryOperator === 'not_equals' && queryValue !== null) {
+                                     constraints.push(or(isNull(resolvedColumn), /* eslint-disable @typescript-eslint/no-explicit-any */ ne(resolvedColumn, queryValue)));
+                                     break;
+@@ -233,6 +243,13 @@ export function parseParams({ adapter, aliasTable, context, fields, joins, local
+                     NULL)`);
+                                     break;
+                                 }
++                                if ((field.type === 'relationship' || field.type === 'upload') && Array.isArray(queryValue) && operator === 'equals') {
++                                    const validValues = queryValue.filter((v)=>v !== null && !Number.isNaN(v));
++                                    if (validValues.length > 0) {
++                                        constraints.push(inArray(table[columnName], validValues));
++                                    }
++                                    break;
++                                }
+                                 if (operator === 'equals' && queryValue === null) {
+                                     constraints.push(isNull(resolvedColumn));
+                                     break;
